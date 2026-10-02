@@ -17,14 +17,14 @@ services:
     image: meltano/meltano:latest-slim
     container_name: banvic-data-meltano
     volumes:
-      - ./banvic-data:/project
-      - meltano_plugins:/project/.meltano
+      - ./banvic-data-meltano:/project
+      - meltano_plugins:/project/.meltano/plugins/
     working_dir: /project
     tty: true
     entrypoint: ""
     environment:
-      MELTANO_DATABASE_URI: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${MELTANO_CONFIG_DB}
-      TARGET_POSTGRES_HOST: postgres
+      MELTANO_DATABASE_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@banvic-data-postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+      TARGET_POSTGRES_HOST: banvic-data-postgres
       TARGET_POSTGRES_PORT: ${POSTGRES_PORT}
       TARGET_POSTGRES_USER: ${POSTGRES_USER}
       TARGET_POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
@@ -41,4 +41,5 @@ volumes:
 
 networks:
   banvic_network:
+    name: banvic_network
     driver: bridge
