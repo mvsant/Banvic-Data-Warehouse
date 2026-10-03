@@ -28,7 +28,7 @@ plugins:
     pip_url: meltanolabs-target-postgres
     config:
       dialect+driver: postgresql+psycopg
-      host: banvic-data-postgres
+      host: localhost
       port: ${POSTGRES_PORT}
       user: ${POSTGRES_USER}
       password: ${POSTGRES_PASSWORD}
