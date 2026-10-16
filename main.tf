@@ -53,7 +53,7 @@ resource "kubernetes_persistent_volume_claim" "postgres_pvc" {
   }
   spec {
     access_modes       = ["ReadWriteOnce"]
-    storage_class_name = "standard" # Strictly mirrors your default rancher provisioner
+    storage_class_name = "standard" 
     resources {
       requests = {
         storage = "1Gi"
@@ -254,9 +254,9 @@ resource "helm_release" "airflow" {
   version    = "1.22.0"
   namespace  = "airflow"
 
-  timeout = 600 # Lowered timeout so you don't have to wait an hour if it breaks
+  timeout = 600 
 
-  # Bypasses internal initialization loops that freeze local machines
+  
   set = [
     { name = "createUserJob.useHelmHooks", value = "false" },
     { name = "migrateDatabaseJob.useHelmHooks", value = "false" },
@@ -267,7 +267,7 @@ resource "helm_release" "airflow" {
 
   values = [
     yamlencode({
-      #executor = "CeleryExecutor"
+      
 
       postgresql = {
         enabled = false
@@ -314,8 +314,8 @@ resource "helm_release" "airflow" {
           branch    = "main"
           rev       = "HEAD"
           depth     = 1
-          subPath   = "dags" # Instructs Airflow to look inside your /dags folder
-          period    = "10s"  # Checks GitHub for updates every 10 seconds
+          subPath   = "dags" 
+          period    = "10s"  
         }
       }
     })

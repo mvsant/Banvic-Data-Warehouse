@@ -29,5 +29,4 @@ kubectl run pvc-inspector --rm -i --tty -n meltano \
     }
   }'
 
-## BASH: cd /project/extract && ls -la
-## BASH: exit # To exit
+

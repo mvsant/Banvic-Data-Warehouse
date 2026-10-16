@@ -4,14 +4,12 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.hooks.sql import DbApiHook
 
-# --- Quick DB Execution Helper Routine ---
 def execute_postgres_sql(sql_query, conn_id="Banvic_Postgres"):
     """Fetches connection directly via Airflow core and runs raw SQL."""
     hook = DbApiHook.get_hook(conn_id=conn_id)
     logging.info(f"Executing query via connection: {conn_id}")
     hook.run(sql_query)
 
-# --- Default Configurations ---
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -26,7 +24,6 @@ with DAG(
     tags=["analytics", "churn", "risco"],
 ) as dag:
 
-    # 1. Task: Analise Churn
     analise_churn = PythonOperator(
         task_id="analise_churn",
         python_callable=execute_postgres_sql,
@@ -70,7 +67,6 @@ with DAG(
         }
     )
 
-    # 2. Task: Analise Risco
     analise_risco = PythonOperator(
         task_id="analise_risco",
         python_callable=execute_postgres_sql,

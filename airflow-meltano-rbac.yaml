@@ -20,8 +20,6 @@ rules:
     resources: ["events"]
     verbs: ["get", "list", "watch"]
 
-  # Necessário somente se o Airflow/KPO lê Secrets diretamente pela API.
-  # No seu caso, os Secrets são referenciados no Pod; mantenha se já for necessário.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]

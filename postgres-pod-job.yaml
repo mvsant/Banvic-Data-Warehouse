@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: banvic-database-postgres-pvc    # Prefix updated with Release Name
-  namespace: postgres                    # Target Namespace added
+  name: banvic-database-postgres-pvc    
+  namespace: postgres                    
 spec:
   accessModes:
     - ReadWriteOnce
@@ -13,11 +13,11 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: banvic-database-postgres-alpine-pod # Prefix updated with Release Name
-  namespace: postgres                        # Target Namespace added
+  name: banvic-database-postgres-alpine-pod 
+  namespace: postgres                        
   labels:
     app: postgres
-    release: banvic-database                 # Added tracking label for the release
+    release: banvic-database                 
 spec:
   containers:
     - name: postgres

@@ -9,13 +9,11 @@ from airflow.models.baseoperator import cross_downstream
 from kubernetes.client import models as k8s
 from airflow.sdk.bases.operator import cross_downstream
 
-# --- Error Handling Callback Routine ---
 def on_task_failure_callback(context):
     ti = context['task_instance']
     logging.error(f"🚨 CRITICAL RESILIENCE ALERT: Task '{ti.task_id}' failed completely in DAG '{ti.dag_id}'.")
     logging.error(f"Exception details: {context.get('exception')}")
 
-# --- Resilient Default Configuration Mapping ---
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
@@ -23,12 +21,10 @@ default_args = {
     "on_failure_callback": on_task_failure_callback,
 }
 
-# --- Shared Secret Variable Configurations ---
 secret_user = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_USER", secret="postgres-credentials", key="POSTGRES_USER")
 secret_password = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_PASSWORD", secret="postgres-credentials", key="POSTGRES_PASSWORD")
 secret_db = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_DBNAME", secret="postgres-credentials", key="POSTGRES_DB")
 
-# --- K8s Volume and Mount Settings ---
 pvc_volume = k8s.V1Volume(
     name="csv-ingestion-volume",
     persistent_volume_claim=k8s.V1PersistentVolumeClaimVolumeSource(claim_name="meltano-csv-pvc"),
@@ -38,7 +34,6 @@ pvc_volume_mount = k8s.V1VolumeMount(
     mount_path="/project/extract",
 )
 
-# --- Scalable Entity Meta Map ---
 ENTITIES = {
     "agencias": "agencias.csv",
     "colaboradores": "colaboradores.csv",
@@ -59,10 +54,8 @@ with DAG(
     sensor_tasks = {}
     sync_tasks = {}
 
-    # --- Modular Task Loop Generation ---
     for entity, filename in ENTITIES.items():
         
-        # 1. Modular Sensor: Evaluates localized drive mounts directly without retries
         sensor_tasks[entity] = KubernetesPodOperator(
             task_id=f'sensor_check_{entity}',
             name=f'sensor-check-{entity}',
@@ -75,7 +68,6 @@ with DAG(
             retries=0, 
         )
 
-        # 2. Modular Sync: Ingests specific pipeline streams with explicit exponential backoffs
         sync_tasks[entity] = KubernetesPodOperator(
             task_id=f'sync_{entity}',
             name=f'meltano-{entity}-worker',
@@ -95,27 +87,19 @@ with DAG(
             retry_exponential_backoff=True,
         )
 
-        # Map current sensor step to fire into its specific pipeline sync worker
         sensor_tasks[entity] >> sync_tasks[entity]
 
-    # --- Orchestrated Execution Graphing Layers ---
-    
-    # Tier 1 parallel processing maps downstream onto Tier 2
     cross_downstream(
         [sync_tasks["agencias"], sync_tasks["colaboradores"], sync_tasks["colaborador_agencia"]], 
         [sync_tasks["clientes"], sync_tasks["contas"], sync_tasks["propostas_credito"]]
     )
 
-    # Tier 2 parallel flows consolidate into the final raw ledger step
     [sync_tasks["clientes"], sync_tasks["contas"], sync_tasks["propostas_credito"]] >> sync_tasks["transacoes"]
 
-    # --- THE SEQUENTIAL LINK ---
-    # Trigger the downstream transformation DAG automatically only after the final sync completes
     trigger_analisys = TriggerDagRunOperator(
         task_id="trigger_analisys_dag",
-        trigger_dag_id="analise_churn_risk_dag", # Must match the DAG ID below
+        trigger_dag_id="analise_churn_risk_dag", 
         wait_for_completion=False, 
     )
 
-    # Trigger dbt models execution only after the final ingestion task has completely finished
     sync_tasks["transacoes"] >> trigger_analisys
