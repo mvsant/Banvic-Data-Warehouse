@@ -111,11 +111,11 @@ with DAG(
 
     # --- THE SEQUENTIAL LINK ---
     # Trigger the downstream transformation DAG automatically only after the final sync completes
-    trigger_transformations = TriggerDagRunOperator(
-        task_id="trigger_dbt_transformations",
-        trigger_dag_id="join_1_account_maturity", # Must match the DAG ID below
-        wait_for_completion=False, # Set to True if you want this DAG to wait for dbt to finish
+    trigger_analisys = TriggerDagRunOperator(
+        task_id="trigger_analisys_dag",
+        trigger_dag_id="analise_churn_risk_dag", # Must match the DAG ID below
+        wait_for_completion=False, 
     )
 
     # Trigger dbt models execution only after the final ingestion task has completely finished
-    sync_tasks["transacoes"] #>> trigger_transformations
+    sync_tasks["transacoes"] >> trigger_analisys
