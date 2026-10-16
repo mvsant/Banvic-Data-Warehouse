@@ -179,6 +179,19 @@ resource "kubernetes_secret" "postgres_credentials_meltano" {
   }
 }
 
+resource "kubernetes_secret" "postgres_credentials_airflow" {
+  metadata {
+    name      = "postgres-credentials"
+    namespace = kubernetes_namespace.airflow.metadata[0].name
+  }
+  type = "Opaque"
+  data = {
+    POSTGRES_USER     = var.postgres_user
+    POSTGRES_PASSWORD = var.postgres_password
+    POSTGRES_DB       = var.postgres_db
+  }
+}
+
 # =========================================================================
 # 5. SECURITY RBAC FOR KUBERNETESPODOPERATOR PARALLELISM WORKERS
 # =========================================================================
@@ -243,53 +256,23 @@ resource "helm_release" "airflow" {
 
   timeout = 600 # Lowered timeout so you don't have to wait an hour if it breaks
 
+  # Bypasses internal initialization loops that freeze local machines
   set = [
-    {  
-    name  = "createUserJob.useHelmHooks"
-    value = "false"
-    },
-    {
-    name  = "migrateDatabaseJob.useHelmHooks"
-    value = "false"
-    },
-    {
-    name  = "createUserJob.applyCustomEnv"
-    value = "false"
-    },
-    {
-    name  = "migrateDatabaseJob.applyCustomEnv"
-    value = "false"
-    },
-    {
-    name  = "dags.gitSync.enabled"
-    value = "false"
-    },
-    {
-    name  = "dagProcessor.waitForMigrations.enabled"
-    value = "false"
-    },
-    {
-    name  = "triggerer.waitForMigrations.enabled"
-    value = "false"
-    },
-    {
-    name  = "worker.waitForMigrations.enabled"
-    value = "false"
-   },
-   {
-  name  = "secret.AIRFLOW_CONN_STANDALONE_POSTGRES"
-  value = "postgresql://${var.postgres_user}:${var.postgres_password}@postgres:5432/${var.postgres_db}"
-  }   
+    { name = "createUserJob.useHelmHooks", value = "false" },
+    { name = "migrateDatabaseJob.useHelmHooks", value = "false" },
+    { name = "dagProcessor.waitForMigrations.enabled", value = "false" },
+    { name = "triggerer.waitForMigrations.enabled", value = "false" },
+    { name = "worker.waitForMigrations.enabled", value = "false" }
   ]
+
   values = [
     yamlencode({
-      # 1. FIX THE 100Gi STORAGE CRAZINESS (Shrink log storage allocations)
-      # 1. Disable the built-in PostgreSQL to bypass the PVC WaitForFirstConsumer deadlock
+      #executor = "CeleryExecutor"
+
       postgresql = {
         enabled = false
       }
 
-      # 2. Point Airflow to use YOUR custom PostgreSQL engine provisioned in Section 3
       data = {
         metadataConnection = {
           user     = var.postgres_user
@@ -300,24 +283,24 @@ resource "helm_release" "airflow" {
           protocol = "postgresql"
         }
       }
+
       workers = {
         persistence = {
           enabled = true
-          size    = "2Gi" # Much safer for a local machine!
+          size    = "1Gi"
         }
       }
       triggerer = {
         persistence = {
           enabled = true
-          size    = "2Gi" # Much safer for a local machine!
+          size    = "1Gi"
         }
       }
 
-      # 2. FIX GIT-SYNC IMAGES & CONFIGURATION
-      images = {
-        airflow = {
-          repository = "banvic-dags"
-          tag        = "0.0.1"
+      config = {
+        logging = {
+          remote_logging = "False"
+          logging_level  = "INFO"
         }
       }
 
@@ -325,8 +308,16 @@ resource "helm_release" "airflow" {
         persistence = {
           enabled = false
         }
+        gitSync = {
+          enabled   = true
+          repo      = "https://github.com/mvsant/Banvic-Data-Warehouse"
+          branch    = "main"
+          rev       = "HEAD"
+          depth     = 1
+          subPath   = "dags" # Instructs Airflow to look inside your /dags folder
+          period    = "10s"  # Checks GitHub for updates every 10 seconds
+        }
       }
     })
   ]
-  
 }
