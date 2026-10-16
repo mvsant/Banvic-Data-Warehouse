@@ -20,9 +20,6 @@ environments:
           password: ${TARGET_POSTGRES_PASSWORD}
           database: ${TARGET_POSTGRES_DBNAME}
           default_target_schema: public
-        select:
-        - public-agencias.*
-        - public-colaboradores.*
         variant: meltanolabs
         pip_url: meltanolabs-target-postgres
       loaders:
