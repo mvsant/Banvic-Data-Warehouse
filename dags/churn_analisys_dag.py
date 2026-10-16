@@ -1,9 +1,9 @@
 from airflow import DAG
-from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.postgres_operator import PostgresOperator
 from airflow.utils.dates import days_ago
 
 with DAG(
-    dag_id="analise_churn_dag",
+    dag_id="analise_churn_risk_dag",
     start_date=days_ago(1),
     schedule="@daily",
     catchup=False,
@@ -14,6 +14,11 @@ with DAG(
         task_id="analise_churn",
         postgres_conn_id="postgres_default",
         sql="""
+
+        DROP TABLE IF EXISTS public.analise_churn;
+
+        CREATE TABLE public.analise_churn AS
+
         WITH business_dates AS (
             SELECT MAX(data_transacao)::date AS current_date_baseline
             FROM public.transacoes
@@ -51,13 +56,14 @@ with DAG(
         )
 
         SELECT
-            COUNT() AS total_customers,
+            COUNT(*) AS total_customers,
             SUM(is_churned) AS total_churned_customers,
             ROUND(
-                (SUM(is_churned)::numeric / COUNT()::numeric) * 100,
+                (SUM(is_churned)::numeric / COUNT(*)::numeric) * 100,
                 2
             ) AS churn_rate_percentage
         FROM churn_classification;
+
         """,
     )
 
@@ -65,6 +71,11 @@ with DAG(
         task_id="analise_risco",
         postgres_conn_id="postgres_default",
         sql="""
+
+        DROP TABLE IF EXISTS public.analise_risco;
+
+        CREATE TABLE public.analise_risco AS
+
         WITH customer_risk AS (
             SELECT
                 c.num_conta,
@@ -86,6 +97,7 @@ with DAG(
 
         SELECT *
         FROM customer_risk;
+
         """,
     )
 
