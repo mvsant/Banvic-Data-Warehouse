@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.providers.postgres.operators.postgres import SQLExecuteQueryOperator
+from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.utils.dates import days_ago
 
 with DAG(
@@ -10,9 +10,9 @@ with DAG(
     tags=["analytics", "churn", "risco"],
 ) as dag:
 
-    analise_churn = SQLExecuteQueryOperator(
+    analise_churn = PostgresOperator(
         task_id="analise_churn",
-        conn_id="postgres_default",
+        postgres_conn_id="postgres_default",
         sql="""
         DROP TABLE IF EXISTS public.analise_churn;
 
@@ -64,9 +64,9 @@ with DAG(
         """,
     )
 
-    analise_risco = SQLExecuteQueryOperator(
+    analise_risco = PostgresOperator(
         task_id="analise_risco",
-        conn_id="postgres_default",
+        postgres_conn_id="postgres_default",
         sql="""
         DROP TABLE IF EXISTS public.analise_risco;
 
