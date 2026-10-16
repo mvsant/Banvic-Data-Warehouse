@@ -1,4 +1,4 @@
-mkdir -p extract dags logs plugins
+set +e
 
 kubectl apply -f postgres-secret.yaml && sleep 2
 kubectl get secret postgres-credentials
@@ -9,7 +9,7 @@ docker build -t meltano-pipeline:v1 . && sleep 5
 kubectl apply -f meltano-inspector.yaml && sleep 5
 kubectl get pod pvc-inspector -n meltano
 
-kubectl cp Banvic_files/ meltano/pvc-inspector:/project/
+kubectl cp extract/ meltano/pvc-inspector:/project/
 
 kubectl exec -it pvc-inspector -n meltano -- ls -la /project/extract/
 kubectl delete -f meltano-inspector.yaml 
@@ -34,9 +34,8 @@ helm upgrade --install banvic-release apache-airflow/airflow \
   --create-namespace \
   -f airflow-values.yaml
 
-set -e
+
 kubectl exec -it deployment/banvic-release-worker -n airflow -- env | grep POSTGRES 
-set -e
 
 echo "Run: bash inspect.sh then cd /project/extract && ls -la to check the files"
 
