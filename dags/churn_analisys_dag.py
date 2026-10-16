@@ -1,19 +1,44 @@
+from datetime import datetime
+import logging
+
 from airflow import DAG
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-from airflow.utils.dates import days_ago
+from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
+from airflow.providers.cncf.kubernetes.secret import Secret
+
+# --- Error Handling Callback Routine ---
+def on_task_failure_callback(context):
+    ti = context['task_instance']
+    logging.error(f"🚨 CRITICAL RESILIENCE ALERT: Task '{ti.task_id}' failed in DAG '{ti.dag_id}'.")
+
+# --- Resilient Default Configuration Mapping ---
+default_args = {
+    "owner": "airflow",
+    "depends_on_past": False,
+    "start_date": datetime(2026, 1, 1),  # Direct datetime object replaces deprecated days_ago
+    "on_failure_callback": on_task_failure_callback,
+}
+
+# --- Shared Secret Variable Configurations for Postgres ---
+secret_user = Secret(deploy_type="env", deploy_target="PGUSER", secret="postgres-credentials", key="POSTGRES_USER")
+secret_password = Secret(deploy_type="env", deploy_target="PGPASSWORD", secret="postgres-credentials", key="POSTGRES_PASSWORD")
+secret_db = Secret(deploy_type="env", deploy_target="PGDATABASE", secret="postgres-credentials", key="POSTGRES_DB")
 
 with DAG(
     dag_id="analise_churn_risk_dag",
-    start_date=days_ago(1),
-    schedule="@daily",
+    default_args=default_args,
+    schedule=None,
     catchup=False,
     tags=["analytics", "churn", "risco"],
 ) as dag:
 
-    analise_churn = SQLExecuteQueryOperator(
+    # 1. Task: Analise Churn
+    analise_churn = KubernetesPodOperator(
         task_id="analise_churn",
-        conn_id="postgres_default",
-        sql="""
+        name="analytics-churn-worker",
+        namespace="meltano",
+        image="postgres:15-alpine",  # Lightweight native client image
+        cmds=["psql", "-h", "postgres-service.postgres.svc.cluster.local", "-p", "5432", "-c"],
+        arguments=["""
         DROP TABLE IF EXISTS public.analise_churn;
 
         CREATE TABLE public.analise_churn AS
@@ -61,37 +86,47 @@ with DAG(
                 2
             ) AS churn_rate_percentage
         FROM churn_classification;
-        """,
+        """],
+        secrets=[secret_user, secret_password, secret_db],
+        retries=1,
     )
 
-    analise_risco = SQLExecuteQueryOperator(
+    # 2. Task: Analise Risco
+    analise_risco = KubernetesPodOperator(
         task_id="analise_risco",
-        conn_id="postgres_default",
-        sql="""
+        name="analytics-risk-worker",
+        namespace="meltano",
+        image="postgres:15-alpine",
+        cmds=["psql", "-h", "postgres-service.postgres.svc.cluster.local", "-p", "5432", "-c"],
+        arguments=["""
         DROP TABLE IF EXISTS public.analise_risco;
 
         CREATE TABLE public.analise_risco AS
-        WITH customer_risk AS (
+        WITH business_dates AS (
+            SELECT MAX(data_transacao)::date AS current_date_baseline
+            FROM public.transacoes
+        ),
+        customer_risk AS (
             SELECT
                 c.num_conta,
                 MAX(t.data_transacao)::date AS last_transaction_date,
-                CURRENT_DATE - MAX(t.data_transacao)::date AS dias_inativos,
+                (bd.current_date_baseline - MAX(t.data_transacao)::date) AS dias_inativos,
                 CASE
-                    WHEN CURRENT_DATE - MAX(t.data_transacao)::date > 90
-                        THEN 'ALTO'
-                    WHEN CURRENT_DATE - MAX(t.data_transacao)::date > 60
-                        THEN 'MEDIO'
+                    WHEN (bd.current_date_baseline - MAX(t.data_transacao)::date) > 90 THEN 'ALTO'
+                    WHEN (bd.current_date_baseline - MAX(t.data_transacao)::date) > 60 THEN 'MEDIO'
                     ELSE 'BAIXO'
                 END AS nivel_risco
             FROM public.contas c
-            LEFT JOIN public.transacoes t
-                ON c.num_conta = t.num_conta
-            GROUP BY c.num_conta
+            LEFT JOIN public.transacoes t ON c.num_conta = t.num_conta
+            CROSS JOIN business_dates bd
+            GROUP BY c.num_conta, bd.current_date_baseline
         )
 
         SELECT *
         FROM customer_risk;
-        """,
+        """],
+        secrets=[secret_user, secret_password, secret_db],
+        retries=1,
     )
 
     analise_churn >> analise_risco
