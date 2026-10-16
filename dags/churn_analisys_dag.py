@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.postgres_operator import PostgresOperator
+from airflow.providers.postgres.operators.postgres import SQLExecuteQueryOperator
 from airflow.utils.dates import days_ago
 
 with DAG(
@@ -10,15 +10,13 @@ with DAG(
     tags=["analytics", "churn", "risco"],
 ) as dag:
 
-    analise_churn = PostgresOperator(
+    analise_churn = SQLExecuteQueryOperator(
         task_id="analise_churn",
-        postgres_conn_id="postgres_default",
+        conn_id="postgres_default",
         sql="""
-
         DROP TABLE IF EXISTS public.analise_churn;
 
         CREATE TABLE public.analise_churn AS
-
         WITH business_dates AS (
             SELECT MAX(data_transacao)::date AS current_date_baseline
             FROM public.transacoes
@@ -63,25 +61,21 @@ with DAG(
                 2
             ) AS churn_rate_percentage
         FROM churn_classification;
-
         """,
     )
 
-    analise_risco = PostgresOperator(
+    analise_risco = SQLExecuteQueryOperator(
         task_id="analise_risco",
-        postgres_conn_id="postgres_default",
+        conn_id="postgres_default",
         sql="""
-
         DROP TABLE IF EXISTS public.analise_risco;
 
         CREATE TABLE public.analise_risco AS
-
         WITH customer_risk AS (
             SELECT
                 c.num_conta,
                 MAX(t.data_transacao)::date AS last_transaction_date,
                 CURRENT_DATE - MAX(t.data_transacao)::date AS dias_inativos,
-
                 CASE
                     WHEN CURRENT_DATE - MAX(t.data_transacao)::date > 90
                         THEN 'ALTO'
@@ -97,7 +91,6 @@ with DAG(
 
         SELECT *
         FROM customer_risk;
-
         """,
     )
 
