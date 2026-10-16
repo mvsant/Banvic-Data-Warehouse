@@ -1,0 +1,119 @@
+default_environment: prod
+environments:
+- name: prod
+  config:
+    plugins:
+      extractors:
+      - name: tap-csv--agencias
+      - name: tap-csv--clientes
+      - name: tap-csv--colaborador_agencia
+      - name: tap-csv--colaboradores
+      - name: tap-csv--contas
+      - name: tap-csv--propostas_credito
+      - name: tap-csv--transacoes
+      - name: tap-postgres
+        config:
+          dialect+driver: postgresql+psycopg
+          host: ${TARGET_POSTGRES_HOST}
+          port: ${TARGET_POSTGRES_PORT}
+          user: ${TARGET_POSTGRES_USER}
+          password: ${TARGET_POSTGRES_PASSWORD}
+          database: ${TARGET_POSTGRES_DBNAME}
+          default_target_schema: public
+        select:
+        - public-agencias.*
+        - public-colaboradores.*
+        variant: meltanolabs
+        pip_url: meltanolabs-target-postgres
+      loaders:
+      - name: target-postgres
+        config:
+          dialect+driver: postgresql+psycopg
+          host: ${TARGET_POSTGRES_HOST}
+          port: ${TARGET_POSTGRES_PORT}
+          user: ${TARGET_POSTGRES_USER}
+          password: ${TARGET_POSTGRES_PASSWORD}
+          database: ${TARGET_POSTGRES_DBNAME}
+          default_target_schema: public
+        variant: meltanolabs
+        pip_url: meltanolabs-target-postgres
+
+plugins:
+  extractors:
+  - name: tap-csv
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
+  - name: tap-csv--agencias
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: agencias
+        path: /project/extract/agencias.csv
+        keys: [cod_agencia]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--clientes
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: clientes
+        path: /project/extract/clientes.csv
+        keys: [cod_cliente]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--colaborador_agencia
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: colaborador_agencia
+        path: /project/extract/colaborador_agencia.csv
+        keys: [cod_colaborador]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--colaboradores
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: colaboradores
+        path: /project/extract/colaboradores.csv
+        keys: [cod_colaborador]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--contas
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: contas
+        path: /project/extract/contas.csv
+        keys: [num_conta]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--propostas_credito
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: propostas_credito
+        path: /project/extract/propostas_credito.csv
+        keys: [cod_proposta]
+        dialect:
+          delimiter: ','
+
+  - name: tap-csv--transacoes
+    inherit_from: tap-csv
+    config:
+      files:
+      - entity: transacoes
+        path: /project/extract/transacoes.csv
+        keys: [cod_transacao]
+        dialect:
+          delimiter: ','
+
+  loaders:
+  - name: target-postgres
+    variant: meltanolabs
+project_id: 01a123c3-2974-7262-b81c-cc39c29fe2e6

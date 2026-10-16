@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-inspector
+  namespace: meltano
+  labels:
+    app: pvc-inspector
+spec:
+  volumes:
+    - name: csv-ingestion-volume
+      persistentVolumeClaim:
+        claimName: meltano-csv-pvc
+  containers:
+    - name: inspector
+      image: busybox
+      # This command keeps the container alive indefinitely in the background
+      command: ["tail", "-f", "/dev/null"]
+      volumeMounts:
+        - name: csv-ingestion-volume
+          mountPath: /project/extract
+  restartPolicy: Never

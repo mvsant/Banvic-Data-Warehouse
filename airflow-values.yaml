@@ -1,0 +1,41 @@
+images:
+  airflow:
+    repository: banvic-dags
+    tag: 0.0.1
+
+dags:
+  persistence:
+    enabled: false
+
+  gitSync:
+    enabled: true
+    #repo: https://github.com/mvsant/banvic-dags.git
+    repo: https://github.com/mvsant/Banvic-Data-Warehouse
+    branch: main
+    ref: main
+    depth: 1
+    subPath: dags
+    period: 10s
+
+secret:
+  - envName: POSTGRES_USER
+    secretName: postgres-credentials
+    secretKey: POSTGRES_USER
+  - envName: POSTGRES_PASSWORD
+    secretName: postgres-credentials
+    secretKey: POSTGRES_PASSWORD
+  - envName: POSTGRES_DB
+    secretName: postgres-credentials
+    secretKey: POSTGRES_DB
+
+connections:
+  - id: Banvic_Postgres
+    type: postgres
+    # We reference the environment variables injected by Option 1
+    host: postgres-service.postgres.svc.cluster.local  # Change to your exact postgres service endpoint if different
+    port: 5432
+    login: $POSTGRES_USER
+    password: $POSTGRES_PASSWORD
+    schema: $POSTGRES_DB
+# ─── PREVENT IMMUTABLE STATEFULSET PATCH ERRORS ───
+webserverSecretKeySecretName: banvic-airflow-webserver-key
