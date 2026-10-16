@@ -1,7 +1,4 @@
-images:
-  airflow:
-    repository: banvic-dags
-    tag: 0.0.1
+# Removed the images.airflow section completely so it uses official apache/airflow images
 
 dags:
   persistence:
@@ -9,7 +6,6 @@ dags:
 
   gitSync:
     enabled: true
-    #repo: https://github.com/mvsant/banvic-dags.git
     repo: https://github.com/mvsant/Banvic-Data-Warehouse
     branch: main
     ref: main
@@ -17,6 +13,7 @@ dags:
     subPath: dags
     period: 10s
 
+# This securely maps your custom postgres secret into the Airflow containers
 secret:
   - envName: POSTGRES_USER
     secretName: postgres-credentials
@@ -31,11 +28,9 @@ secret:
 connections:
   - id: Banvic_Postgres
     type: postgres
-    # We reference the environment variables injected by Option 1
-    host: postgres-service.postgres.svc.cluster.local  # Change to your exact postgres service endpoint if different
+    host: postgres-service.postgres.svc.cluster.local
     port: 5432
     login: $POSTGRES_USER
     password: $POSTGRES_PASSWORD
     schema: $POSTGRES_DB
-# ─── PREVENT IMMUTABLE STATEFULSET PATCH ERRORS ───
-webserverSecretKeySecretName: banvic-airflow-webserver-key
+
