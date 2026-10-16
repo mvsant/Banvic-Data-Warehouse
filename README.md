@@ -60,7 +60,7 @@ Use code with caution.
 ## 🔄 Pipeline de Análise de Churn e Risco (Airflow DAG)
 
 ### Representação Visual do Fluxo (DAG)
-```mermaid
+
 graph LR
     analise_churn --> analise_risco
 Linhagem de Persistência de Dados
