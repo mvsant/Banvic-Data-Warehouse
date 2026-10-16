@@ -5,7 +5,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.hooks.sql import DbApiHook
 
 # --- Quick DB Execution Helper Routine ---
-def execute_postgres_sql(sql_query, conn_id="postgres_default"):
+def execute_postgres_sql(sql_query, conn_id="Banvic_Postgres"):
     """Fetches connection directly via Airflow core and runs raw SQL."""
     hook = DbApiHook.get_hook(conn_id=conn_id)
     logging.info(f"Executing query via connection: {conn_id}")
@@ -31,7 +31,7 @@ with DAG(
         task_id="analise_churn",
         python_callable=execute_postgres_sql,
         op_kwargs={
-            "conn_id": "postgres_default",
+            "conn_id": "Banvic_Postgres",
             "sql_query": """
                 DROP TABLE IF EXISTS public.analise_churn;
 
@@ -75,7 +75,7 @@ with DAG(
         task_id="analise_risco",
         python_callable=execute_postgres_sql,
         op_kwargs={
-            "conn_id": "postgres_default",
+            "conn_id": "Banvic_Postgres",
             "sql_query": """
                 DROP TABLE IF EXISTS public.analise_risco;
 
