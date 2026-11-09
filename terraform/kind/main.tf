@@ -12,10 +12,10 @@ terraform {
 provider "kind" {}
 
 resource "kind_cluster" "banvic" {
-  name            = "banvic"
-  node_image      = "kindest/node:v1.31.0"
+  name            = var.cluster_name
+  node_image      = var.node_image
   wait_for_ready  = true
-  kubeconfig_path = "${path.root}/kubeconfig"
+  kubeconfig_path = abspath("${path.root}/${var.kubeconfig_path}")
 
   kind_config {
     kind        = "Cluster"
@@ -25,8 +25,14 @@ resource "kind_cluster" "banvic" {
       role = "control-plane"
 
       extra_mounts {
-        host_path      = abspath("${path.root}/../.kind-data")
+        host_path      = abspath("${path.root}/${var.persistence_host_path}")
         container_path = "/mnt/banvic-persistence"
+      }
+
+      extra_mounts {
+        host_path      = abspath("${path.root}/${var.airflow_dags_host_path}")
+        container_path = var.airflow_dags_node_path
+        read_only      = true
       }
     }
   }
@@ -35,4 +41,9 @@ resource "kind_cluster" "banvic" {
 output "kubectl_context" {
   description = "Context name for the Banvic Kind cluster"
   value       = kind_cluster.banvic.context_name
+}
+
+output "kubeconfig_path" {
+  description = "Path to the generated kubeconfig"
+  value       = kind_cluster.banvic.kubeconfig_path
 }

@@ -45,7 +45,7 @@ plugins:
     config:
       files:
       - entity: agencias
-        path: /project/extract/agencias.csv
+        path: /project/data/agencias.csv
         keys: [cod_agencia]
         dialect:
           delimiter: ','
@@ -55,7 +55,7 @@ plugins:
     config:
       files:
       - entity: clientes
-        path: /project/extract/clientes.csv
+        path: /project/data/clientes.csv
         keys: [cod_cliente]
         dialect:
           delimiter: ','
@@ -65,7 +65,7 @@ plugins:
     config:
       files:
       - entity: colaborador_agencia
-        path: /project/extract/colaborador_agencia.csv
+        path: /project/data/colaborador_agencia.csv
         keys: [cod_colaborador]
         dialect:
           delimiter: ','
@@ -75,7 +75,7 @@ plugins:
     config:
       files:
       - entity: colaboradores
-        path: /project/extract/colaboradores.csv
+        path: /project/data/colaboradores.csv
         keys: [cod_colaborador]
         dialect:
           delimiter: ','
@@ -85,7 +85,7 @@ plugins:
     config:
       files:
       - entity: contas
-        path: /project/extract/contas.csv
+        path: /project/data/contas.csv
         keys: [num_conta]
         dialect:
           delimiter: ','
@@ -95,7 +95,7 @@ plugins:
     config:
       files:
       - entity: propostas_credito
-        path: /project/extract/propostas_credito.csv
+        path: /project/data/propostas_credito.csv
         keys: [cod_proposta]
         dialect:
           delimiter: ','
@@ -105,7 +105,7 @@ plugins:
     config:
       files:
       - entity: transacoes
-        path: /project/extract/transacoes.csv
+        path: /project/data/transacoes.csv
         keys: [cod_transacao]
         dialect:
           delimiter: ','
