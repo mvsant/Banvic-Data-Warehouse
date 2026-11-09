@@ -7,3 +7,9 @@ terraform.tfstate.backup
 terraform.tfvars
 postgres-secret.yaml
 .terraform/
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfstate.lock.info
+kind/kubeconfig
+/.kind-data/

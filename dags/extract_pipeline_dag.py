@@ -21,9 +21,9 @@ default_args = {
     "on_failure_callback": on_task_failure_callback,
 }
 
-secret_user = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_USER", secret="postgres-credentials", key="POSTGRES_USER")
-secret_password = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_PASSWORD", secret="postgres-credentials", key="POSTGRES_PASSWORD")
-secret_db = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_DBNAME", secret="postgres-credentials", key="POSTGRES_DB")
+secret_user = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_USER", secret="banvic-postgres-credentials", key="POSTGRES_USER")
+secret_password = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_PASSWORD", secret="banvic-postgres-credentials", key="POSTGRES_PASSWORD")
+secret_db = Secret(deploy_type="env", deploy_target="TARGET_POSTGRES_DBNAME", secret="banvic-postgres-credentials", key="POSTGRES_DB")
 
 pvc_volume = k8s.V1Volume(
     name="csv-ingestion-volume",
