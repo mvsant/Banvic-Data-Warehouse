@@ -11,11 +11,10 @@ terraform {
 
 provider "kind" {}
 
-resource "kind_cluster" "banvic" {
-  name            = var.cluster_name
-  node_image      = var.node_image
-  wait_for_ready  = true
-  kubeconfig_path = abspath("${path.root}/${var.kubeconfig_path}")
+resource "kind_cluster" "default" {
+  name           = "banvic-warehouse"
+  node_image     = "kindest/node:v1.36.1"
+  wait_for_ready = true
 
   kind_config {
     kind        = "Cluster"
@@ -23,11 +22,6 @@ resource "kind_cluster" "banvic" {
 
     node {
       role = "control-plane"
-
-      extra_mounts {
-        host_path      = abspath("${path.root}/${var.persistence_host_path}")
-        container_path = "/mnt/banvic-persistence"
-      }
 
       extra_mounts {
         host_path      = abspath("${path.root}/${var.airflow_dags_host_path}")
@@ -38,12 +32,7 @@ resource "kind_cluster" "banvic" {
   }
 }
 
-output "kubectl_context" {
-  description = "Context name for the Banvic Kind cluster"
-  value       = kind_cluster.banvic.context_name
-}
-
-output "kubeconfig_path" {
-  description = "Path to the generated kubeconfig"
-  value       = kind_cluster.banvic.kubeconfig_path
+resource "kind_load" "app" {
+  image        = "meltano-pipeline:v1"
+  cluster_name = kind_cluster.default.name
 }

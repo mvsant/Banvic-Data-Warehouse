@@ -3,9 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 kind_terraform_root="$repo_root/terraform/kind"
-export KUBECONFIG="$(terraform -chdir="$kind_terraform_root" output -raw kubeconfig_path)"
-cluster_context="$(terraform -chdir="$kind_terraform_root" output -raw kubectl_context)"
-cluster_name="${cluster_context#kind-}"
+export KUBECONFIG="$kind_terraform_root/kubeconfig"
+cluster_context="kind-banvic-warehouse"
 
 for filename in \
   agencias.csv clientes.csv colaborador_agencia.csv colaboradores.csv \
@@ -20,7 +19,7 @@ kubectl cluster-info --context "$cluster_context" >/dev/null
 kubectl get pvc meltano-data-pvc -n meltano >/dev/null
 
 docker build -t meltano-pipeline:v1 -f "$repo_root/meltano/Dockerfile" "$repo_root/meltano"
-kind load docker-image meltano-pipeline:v1 --name "$cluster_name"
+terraform -chdir="$kind_terraform_root" apply -input=false
 
 kubectl apply -f "$repo_root/k8s/meltano/data-loader.yaml"
 cleanup() {

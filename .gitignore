@@ -4,6 +4,7 @@ terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfvars
+*.tfplan
 postgres-secret.yaml
 .terraform/
 **/.terraform/

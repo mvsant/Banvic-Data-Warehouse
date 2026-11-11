@@ -5,11 +5,12 @@ Projeto de engenharia de dados que ingere arquivos CSV com Meltano, orquestra os
 ## Estrutura
 
 ```text
-airflow/       DAGs montadas localmente no Airflow
+airflow/       DAGs e documentação do Airflow
 data/          CSVs de entrada versionados
-k8s/           Manifestos auxiliares e recursos Kubernetes
-meltano/       Imagem e projeto de ingestão Meltano
-terraform/     Provisionamento do Kind e módulos da solução
+k8s/           Manifestos e utilitários auxiliares
+meltano/       Projeto Meltano com a estrutura padrão
+terraform/kind/      Cluster Kind
+terraform/platform/  PostgreSQL externo e Airflow Helm
 scripts/       Rotinas locais de desenvolvimento
 ```
 
@@ -17,20 +18,20 @@ Os diretórios principais contêm READMEs com instruções próprias. O [guia Te
 
 ## Persistência
 
-O cluster Kind monta `.kind-data/` no nó para persistir os dados do DW, arquivos CSV sincronizados e logs do Airflow. O Postgres usa um Deployment com probes para recuperação automática, e o Airflow mantém os logs em um PVC persistente. O namespace `meltano` e seu PVC são recursos declarativos Terraform; recriar o cluster não preserva os dados se `.kind-data/` for removido.
+PostgreSQL e Airflow são provisionados por `terraform/platform/` no Kind existente, em namespaces separados. Os dados do PostgreSQL e os logs do Airflow usam volumes no filesystem Linux do nó Kind; sobrevivem a reinícios de Pods, mas não à destruição do cluster. A persistência local não substitui backups.
 
 As credenciais e o state são locais e ignorados pelo Git. Veja as orientações de segurança em [terraform/README.md](terraform/README.md).
 
 ## Desenvolvimento local
 
-* Edite uma DAG em `airflow/dags/`; o Kind monta essa pasta diretamente no Airflow, sem Git-Sync, rebuild ou `terraform apply`. O Airflow a identifica no próximo ciclo de leitura.
-* Atualize um CSV em `data/` e execute `bash scripts/setup.sh` para sincronizar a versão local com o PVC persistente do namespace `meltano`.
-* Os logs e os arquivos do banco ficam em `.kind-data/airflow-logs/` e `.kind-data/postgres/`. Faça backup desse diretório antes de substituir ou remover o cluster.
-* Para acessar o Airflow e o Postgres:
+* O Terraform `terraform/kind/` cria o cluster Kind, carrega a imagem Meltano local e monta `airflow/dags/` do workspace no nó. Salvar uma DAG local atualiza o conteúdo visível ao Airflow sem rebuild ou `terraform apply`.
+* `terraform/platform/` instala PostgreSQL, Airflow e o namespace/PVC do Meltano. Rode `bash scripts/setup.sh` para construir/carregar Meltano e copiar os CSVs locais ao PVC.
+* Airflow dispara pods Meltano de curta duração. Meltano escreve no banco `banvic` usando uma credencial de privilégio mínimo; a mesma credencial é disponibilizada como conexão Airflow `Banvic_Postgres`.
+* Os dados do Postgres, CSVs sincronizados e logs do Airflow persistem nos volumes do nó Kind, mas não sobrevivem à destruição do cluster. Faça backup antes de substituí-lo.
+* Para acessar o Airflow:
 
   ```bash
-  kubectl --kubeconfig terraform/kind/kubeconfig port-forward svc/banvic-release-api-server 8080:8080 -n airflow
-  kubectl --kubeconfig terraform/kind/kubeconfig port-forward svc/postgres-service 5432:5432 -n postgres
+  kubectl --kubeconfig terraform/kind/kubeconfig port-forward svc/airflow-api-server 8080:8080 -n airflow
   ```
 
 ![Arquitetura do projeto](assets/image.png)
