@@ -18,6 +18,7 @@ default_args = {
 
 with DAG(
     dag_id="analise_churn_risk_dag",
+    description="Create account-level churn and inactivity-risk analyses in PostgreSQL.",
     default_args=default_args,
     schedule=None,
     catchup=False,

@@ -9,4 +9,4 @@ kubectl run meltano-data-inspector \
   --restart=Never \
   --namespace=meltano \
   --image=busybox \
-  --overrides='{"spec":{"volumes":[{"name":"meltano-data","persistentVolumeClaim":{"claimName":"meltano-data-pvc"}}],"containers":[{"name":"inspector","image":"busybox","command":["sh","-c","ls -la /project/data && sleep 3600"],"stdin":true,"tty":true,"volumeMounts":[{"name":"meltano-data","mountPath":"/project/data","readOnly":true}]}]}}'
+  --overrides='{"spec":{"volumes":[{"name":"meltano-data","persistentVolumeClaim":{"claimName":"meltano-data-pvc"}}],"containers":[{"name":"inspector","image":"busybox","command":["sh","-c","ls -la /project/extract && sleep 3600"],"stdin":true,"tty":true,"volumeMounts":[{"name":"meltano-data","mountPath":"/project/extract","readOnly":true}]}]}}'

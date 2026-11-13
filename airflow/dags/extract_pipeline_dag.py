@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import json
 import logging
 
 from airflow import DAG
@@ -44,48 +45,51 @@ persistent_data_volume = k8s.V1Volume(
 )
 persistent_data_volume_mount = k8s.V1VolumeMount(
     name="meltano-data-volume",
-    mount_path="/project/data",
+    mount_path="/project/extract",
     read_only=True,
 )
 
 ENTITIES = {
     "agencias": "agencias.csv",
     "colaboradores": "colaboradores.csv",
-    "clientes": "clientes.csv",
     "colaborador_agencia": "colaborador_agencia.csv",
+    "clientes": "clientes.csv",
     "contas": "contas.csv",
     "propostas_credito": "propostas_credito.csv",
-    "transacoes": "transacoes.csv"
+    "transacoes": "transacoes.csv",
 }
 
 with DAG(
-    'extract_pipeline',
+    dag_id="extract_pipeline",
+    description="Extract selected streams from the Meltano PVC and load PostgreSQL.",
     default_args=default_args,
     schedule=None,
     catchup=False,
+    tags=["meltano", "extract", "postgres", "banvic"],
 ) as dag:
-
     sync_tasks = {}
 
     for entity, filename in ENTITIES.items():
         sync_tasks[entity] = KubernetesPodOperator(
-            task_id=f'sync_{entity}',
-            name=f'meltano-{entity}-worker',
-            namespace='meltano',
-            image='meltano-pipeline:v1',
+            task_id=f"sync_{entity}",
+            name=f"meltano-{entity}-worker",
+            namespace="meltano",
+            image="meltano-pipeline:v1",
             image_pull_policy="IfNotPresent",
             cmds=["/bin/sh", "-ec"],
             arguments=[
-                f"test -s /project/data/{filename} || "
+                f"test -s /project/extract/{filename} || "
                 f"(echo 'Required source file is missing or empty: {filename}' >&2; exit 1); "
-                f"exec meltano --environment=prod run tap-csv--{entity} target-postgres"
+                f"exec meltano --environment=prod run --state-id-suffix={entity} "
+                "tap-csv target-postgres"
             ],
             volumes=[persistent_data_volume],
             volume_mounts=[persistent_data_volume_mount],
             secrets=[secret_user, secret_password, secret_db],
             env_vars={
-                'TARGET_POSTGRES_HOST': 'postgres.postgres.svc.cluster.local',
-                'TARGET_POSTGRES_PORT': '5432',
+                "TAP_CSV__SELECT": json.dumps([f"{entity}.*"]),
+                "TARGET_POSTGRES_HOST": "{{ conn.banvic_postgres.host }}",
+                "TARGET_POSTGRES_PORT": "{{ conn.banvic_postgres.port }}",
             },
             retries=3,
             retry_delay=timedelta(minutes=2),
@@ -93,8 +97,20 @@ with DAG(
         )
 
     cross_downstream(
-        [sync_tasks["agencias"], sync_tasks["colaboradores"], sync_tasks["colaborador_agencia"]], 
-        [sync_tasks["clientes"], sync_tasks["contas"], sync_tasks["propostas_credito"]]
+        [
+            sync_tasks["agencias"],
+            sync_tasks["colaboradores"],
+            sync_tasks["colaborador_agencia"],
+        ],
+        [
+            sync_tasks["clientes"],
+            sync_tasks["contas"],
+            sync_tasks["propostas_credito"],
+        ],
     )
 
-    [sync_tasks["clientes"], sync_tasks["contas"], sync_tasks["propostas_credito"]] >> sync_tasks["transacoes"]
+    [
+        sync_tasks["clientes"],
+        sync_tasks["contas"],
+        sync_tasks["propostas_credito"],
+    ] >> sync_tasks["transacoes"]

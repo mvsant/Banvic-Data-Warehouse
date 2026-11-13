@@ -3,8 +3,7 @@ FROM meltano/meltano:latest-slim
 
 WORKDIR /project
 
-COPY meltano.yml .
-
+COPY . .
 
 RUN meltano install
 

@@ -1,0 +1,7 @@
+.git/
+.meltano/
+.env
+venv/
+__pycache__/
+*.py[cod]
+extract/*.csv

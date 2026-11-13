@@ -5,11 +5,11 @@ from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperato
 
 with DAG(
     dag_id="meltano_dragon",
-    description="Run the Meltano dragon command as a follow-up trigger test.",
+    description="Run a valid Meltano project sanity check in the project container.",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
-    tags=["meltano", "dragon", "trigger-test"],
+    tags=["meltano", "sanity-check"],
 ) as dag:
     summon_dragon = KubernetesPodOperator(
         task_id="summon_dragon",
@@ -18,5 +18,5 @@ with DAG(
         image="meltano-pipeline:v1",
         image_pull_policy="IfNotPresent",
         cmds=["/bin/sh", "-ec"],
-        arguments=["cd /project && exec meltano --environment=prod dragon"],
+        arguments=["cd /project && exec meltano --environment=prod --help"],
     )

@@ -23,6 +23,12 @@ provider "helm" {
   }
 }
 
+locals {
+  airflow_dags_dir         = "${path.module}/../../airflow/dags"
+  airflow_dag_files        = fileset(local.airflow_dags_dir, "*.py")
+  airflow_dags_config_hash = substr(sha256(join("", [for filename in local.airflow_dag_files : file("${local.airflow_dags_dir}/${filename}")])), 0, 8)
+}
+
 resource "kubernetes_namespace_v1" "postgres" {
   metadata {
     name = "postgres"
@@ -38,6 +44,18 @@ resource "kubernetes_namespace_v1" "airflow" {
 resource "kubernetes_namespace_v1" "meltano" {
   metadata {
     name = "meltano"
+  }
+}
+
+resource "kubernetes_config_map_v1" "airflow_dags" {
+  metadata {
+    name      = "airflow-local-dags-${local.airflow_dags_config_hash}"
+    namespace = kubernetes_namespace_v1.airflow.metadata[0].name
+  }
+
+  data = {
+    for filename in local.airflow_dag_files :
+    filename => file("${local.airflow_dags_dir}/${filename}")
   }
 }
 
@@ -209,7 +227,7 @@ resource "kubernetes_role_v1" "airflow_meltano_pod_runner" {
   rule {
     api_groups = [""]
     resources  = ["pods"]
-    verbs      = ["create", "delete", "get", "list", "watch"]
+    verbs      = ["create", "delete", "get", "list", "patch", "watch"]
   }
 
   rule {
@@ -574,31 +592,35 @@ resource "helm_release" "airflow" {
       apiServer = {
         extraVolumes = [{
           name = "local-dags"
-          hostPath = {
-            path = var.airflow_dags_node_path
-            type = "Directory"
+          configMap = {
+            name = kubernetes_config_map_v1.airflow_dags.metadata[0].name
           }
         }]
-        extraVolumeMounts = [{
-          name      = "local-dags"
-          mountPath = "/opt/airflow/dags"
-          readOnly  = true
-        }]
+        extraVolumeMounts = [
+          for filename in local.airflow_dag_files : {
+            name      = "local-dags"
+            mountPath = "/opt/airflow/dags/${filename}"
+            subPath   = filename
+            readOnly  = true
+          }
+        ]
       }
 
       dagProcessor = {
         extraVolumes = [{
           name = "local-dags"
-          hostPath = {
-            path = var.airflow_dags_node_path
-            type = "Directory"
+          configMap = {
+            name = kubernetes_config_map_v1.airflow_dags.metadata[0].name
           }
         }]
-        extraVolumeMounts = [{
-          name      = "local-dags"
-          mountPath = "/opt/airflow/dags"
-          readOnly  = true
-        }]
+        extraVolumeMounts = [
+          for filename in local.airflow_dag_files : {
+            name      = "local-dags"
+            mountPath = "/opt/airflow/dags/${filename}"
+            subPath   = filename
+            readOnly  = true
+          }
+        ]
       }
 
       scheduler = {
@@ -607,31 +629,35 @@ resource "helm_release" "airflow" {
         }
         extraVolumes = [{
           name = "local-dags"
-          hostPath = {
-            path = var.airflow_dags_node_path
-            type = "Directory"
+          configMap = {
+            name = kubernetes_config_map_v1.airflow_dags.metadata[0].name
           }
         }]
-        extraVolumeMounts = [{
-          name      = "local-dags"
-          mountPath = "/opt/airflow/dags"
-          readOnly  = true
-        }]
+        extraVolumeMounts = [
+          for filename in local.airflow_dag_files : {
+            name      = "local-dags"
+            mountPath = "/opt/airflow/dags/${filename}"
+            subPath   = filename
+            readOnly  = true
+          }
+        ]
       }
 
       triggerer = {
         extraVolumes = [{
           name = "local-dags"
-          hostPath = {
-            path = var.airflow_dags_node_path
-            type = "Directory"
+          configMap = {
+            name = kubernetes_config_map_v1.airflow_dags.metadata[0].name
           }
         }]
-        extraVolumeMounts = [{
-          name      = "local-dags"
-          mountPath = "/opt/airflow/dags"
-          readOnly  = true
-        }]
+        extraVolumeMounts = [
+          for filename in local.airflow_dag_files : {
+            name      = "local-dags"
+            mountPath = "/opt/airflow/dags/${filename}"
+            subPath   = filename
+            readOnly  = true
+          }
+        ]
       }
 
       extraEnvFrom = yamlencode([{

@@ -47,25 +47,28 @@ Do not commit `terraform.tfvars`, Terraform state, or saved plan files. Terrafor
 
 ## Meltano ELT
 
-The platform root creates the `meltano` namespace and a PVC for source CSV files. Run the setup script after provisioning the platform to build/load the Meltano image and copy `data/*.csv` into that PVC:
+The platform root creates the `meltano` namespace and a PVC for source CSV files. Run the setup script after provisioning the platform to validate the input files and build/load the complete Meltano project image:
 
 ```bash
 bash scripts/setup.sh
 ```
 
-Airflow's `extract_pipeline` launches short-lived Meltano pods in the `meltano` namespace. Those pods mount the CSV PVC read-only and use the same Banvic database credentials as Airflow's `Banvic_Postgres` connection. The pipeline loads the CSV data into the `banvic` database. No downstream output stage is configured here.
+The script uses a temporary empty Docker client config while building the public Meltano base image, loads `meltano-pipeline:v1` into an existing Kind cluster, and copies the current CSVs directly into the Meltano PVC. This avoids relying on the source bind mount when refreshing an existing cluster. Use Kind CLI v0.32.0 or newer for image loading with the containerd config v4 in this cluster's node image; set `KIND_BIN` to that binary if the default `kind` command is older. The script does not recreate an existing cluster.
+
+The manual `sync_sources_then_extract` DAG syncs current CSVs from the Kind node's read-only local `data/` bind mount into the Meltano PVC, then triggers `extract_pipeline`; that mount must point to the WSL-native `/mnt/<drive>/.../data` path. The extraction DAG launches one short-lived Meltano pod per CSV stream in the `meltano` namespace and preserves the original dependency stages. Each Meltano pod mounts the CSV PVC read-only at `/project/extract`, selects one stream from the shared `tap-csv` definition using `TAP_CSV__SELECT`, and runs `tap-csv` directly into `target-postgres`. The separate manual `meltano_select` DAG loads only `colaboradores` from the PVC, which `scripts/setup.sh` refreshes. PostgreSQL host/port are rendered from Airflow's `banvic_postgres` connection; credentials are injected directly from the Kubernetes Secret. The pipeline loads data into the `banvic` database. No downstream dbt stage is configured yet.
 
 ## Persistence and access
 
 - PostgreSQL data: `postgres/postgres-data` PVC.
-- Source CSV files: `meltano/meltano-data-pvc`.
+- Source CSV files: `scripts/setup.sh` copies current local `data/` files into `meltano/meltano-data-pvc`; Meltano task pods mount it at `/project/extract`.
 - Airflow task logs: `airflow/airflow-logs` PVC. The chart mounts this shared claim into Airflow components.
 - Terraform initializes the shared log volume permissions for Airflow's UID/GID before starting the chart Pods.
 - The static PVs use paths inside the Linux filesystem of the Kind node, not Windows bind mounts. Data survives pod restarts and Terraform changes that retain the PVCs, but deleting the Kind cluster deletes the node-local data. Back up the database and logs before destroying the cluster.
 - The Airflow chart uses `LocalExecutor`, disables its bundled PostgreSQL and Redis, and runs migrations against the external PostgreSQL database.
 - The Airflow scheduler has a namespace-scoped Role permitting it to create, inspect, read logs from, and delete Meltano task pods. It has no broader cluster permissions.
-- The Kind node bind-mounts local `airflow/dags/` and the API server, scheduler, DAG processor, and triggerer mount it read-only. Saving a DAG locally makes it available without building an image or running Terraform again.
-- Adding the bind mount to an existing Kind cluster requires replacing the cluster. Back up PostgreSQL and Airflow logs first; node-local data is lost when that cluster is replaced.
+- The Role also permits `patch` on pods, which the KubernetesPodOperator uses to update task-pod metadata after creation.
+- The Kind node bind-mounts local `airflow/dags/` and `data/`; Airflow components mount the DAG folder read-only, and the sync task reads source CSVs from the node's `/mnt/banvic-source/data`. Saving a DAG locally makes it available without building an image or running Terraform again. Updating CSVs is picked up by the next DAG run.
+- Adding a bind mount to an existing Kind cluster requires replacing the cluster. Back up PostgreSQL, Meltano source files, and Airflow logs first; node-local data is lost when that cluster is replaced.
 
 Open the Airflow UI with:
 
